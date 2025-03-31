@@ -27,5 +27,3 @@ pip install -r requirements.txt
 ```bash
 uvicorn app.main:app --reload
 ```
-
-> `--reload`: 코드 변경 시 서버 자동 재시작 (개발용)
