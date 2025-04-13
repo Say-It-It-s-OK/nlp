@@ -5,11 +5,8 @@ from dotenv import load_dotenv
 from openai import OpenAI
 from pathlib import Path
 
-# .env 파일 강제 로드 (nlp-server 루트 기준)
 dotenv_path = Path(__file__).resolve().parents[2] / ".env"
 load_dotenv(dotenv_path=dotenv_path)
-
-print("✅ OPENAI_API_KEY:", os.getenv("OPENAI_API_KEY"))  # 디버깅용 출력
 
 # OpenAI 클라이언트 초기화
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
