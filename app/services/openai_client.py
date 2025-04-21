@@ -105,6 +105,12 @@ def call_openai(messages: List[Dict[str, str]]) -> Dict:
         return parsed
     except Exception as e:
         return {"error": str(e)}
+    
+async def handle_text(text: str):
+    messages = make_messages(text)
+    result = call_openai(messages)
+    return result
+    
 
 # 테스트용 실행
 if __name__ == "__main__":
