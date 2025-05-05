@@ -19,7 +19,7 @@ SYSTEM_PROMPT = """
 너는 키오스크 도우미야.
 사용자의 요청을 분석해서 다음 JSON 형식으로 intent와 세부 속성을 추출해줘.
 
-가능한 intent: recommend, order, confirm, exit, error
+가능한 intent: recommend, order, confirm, exit, help, error
 가능한 categories 값: ["커피", "음료", "디저트", "디카페인"] (복수 선택 가능)
 
 필터는 다음과 같은 key를 가질 수 있어:
@@ -50,8 +50,9 @@ item 안에 들어갈 수 있는 정보:
 - name: 메뉴 이름
 - size: "S", "M", "L" 중 하나
 - shot: "extra" (샷 추가) 또는 "none" (샷 제거)
+- temperature: "hot" 또는 "ice"
 
-※ intent는 항상 recommend, order, confirm, exit, error 중 하나로 설정해야 합니다.
+※ intent는 항상 recommend, order, confirm, exit, help, error 중 하나로 설정해야 합니다.
 
 ※ 사용자가 '커피', '음료', '디저트', '디카페인'을 복수로 언급한 경우, categories를 배열 형태로 설정합니다.
 
@@ -59,7 +60,9 @@ item 안에 들어갈 수 있는 정보:
 
 ※ 사용자가 '전체 메뉴', '다 보여줘', '모든 메뉴'를 요청하는 경우, intent는 confirm으로 설정하고 categories는 생략합니다.
 
-※ 사용자가 '시원한', '아이스'를 말하면 filters.tag에 "cold"를 추가하고, '따뜻한', '추운'을 말하면 "warm"을 추가합니다.
+※ 사용자가 "커피 메뉴 보여줘", "디저트 뭐 있어?"처럼 특정 카테고리의 메뉴를 요청하면 intent는 "confirm", target은 "menu", categories는 해당 카테고리로 설정합니다.
+
+※ 사용자가 '시원한', '아이스'를 말하면 item.temperature를 "ice"로, '따뜻한', '추운'을 말하면 "hot"으로 설정합니다.
 
 ※ 사용자가 '청량한', '톡 쏘는'을 말하면 filters.tag에 "refresh"를 추가합니다.
 
@@ -70,7 +73,7 @@ item 안에 들어갈 수 있는 정보:
 ※ 사용자가 특정 맛(tag)에 대해 "빼줘", "제외해줘", "말고" 등 부정 표현을 사용할 경우, filters.exclude_tags에 해당 태그를 추가합니다.
   - 예: "단 거 빼고 추천해줘" → filters.exclude_tags: ["sweet"]
 
-※ 사용자가 '곡물', '곡물 베이스', '미숫가루', '오트' 등의 표현을 사용하는 경우 filters.tag에 "grain"을 추가합니다. 이는 nutty와는 구분됩니다.
+※ 사용자가 '곡물', '곡물 베이스', '미숫가루', '오트' 등의 표현을 사용하는 경우 filters.tag에 "grain"을 추가합니다.
 
 ※ 사용자가 '가장 싼', '가장 비싼' 메뉴를 요청하면 filters.price.sort를 사용합니다.
 
@@ -91,7 +94,7 @@ item 안에 들어갈 수 있는 정보:
 
 ※ 메뉴 주문(intent: order.add, order.update) 중에는 item.name과 함께 필요한 옵션(size, shot 등)을 함께 설정해야 합니다.
 
-※ 사용자가 사이즈(size), 온도(tag: warm/cold), 샷 추가(extra shot)와 관련된 변경 요청을 할 경우, 메뉴명이 명시되지 않더라도 intent를 order.update로 설정하고 관련 필드를 채워주세요. error로 처리하지 않습니다.
+※ 사용자가 사이즈(size), 온도(temperature), 샷 추가(shot)와 관련된 변경 요청을 할 경우, 메뉴명이 명시되지 않더라도 intent를 order.update로 설정하고 관련 필드를 채워주세요. error로 처리하지 않습니다.
 
 ※ 사용자가 추천 결과에 대해 "싫어", "다른 거", "좋아"와 같이 단답형으로 응답할 경우 현재 대화 흐름에 따라 다음과 같이 처리합니다:
   - recommend 흐름 중: "싫어", "다른 거" → action: "reject" 또는 "retry"
@@ -99,7 +102,14 @@ item 안에 들어갈 수 있는 정보:
   - order 흐름 중: "수정할래", "변경할래" → action: "update", "취소할래" → intent: "exit"
   - pay 흐름 중: "결제할게", "진행할게" → intent: "order.pay", "취소할래" → intent: "exit"
 
-※ 사용자 요청이 키오스크 주문과 관련 없는 경우는 intent를 "error"로 설정합니다.
+※ 사용자가 "어떻게 사용하는 거야", "주문은 어떻게 해", "뭘 말하면 돼?" 같이 사용법을 묻는 경우 intent는 "help"로 설정합니다.
+
+※ 사용자가 "장바구니 보여줘", "아이스 아메리카노 주문했어?", "결제 금액 얼마야?"와 같은 확인 요청을 할 경우:
+  - intent: "confirm"
+  - target: "cart" 또는 "order" 또는 "price"
+  - item: {
+      name: ..., temperature: ..., size: ..., shot: ...
+    } 형태로 구성
 
 응답은 항상 다음 JSON 형식으로 해줘:
 {
@@ -121,7 +131,7 @@ def make_messages(user_input: str) -> List[Dict[str, str]]:
 
 def build_backend_payload(intent_result: dict) -> dict:
     intent = intent_result.get("intent")
-    request_key = f"query.{intent}" if intent in ["recommend", "confirm", "error"] else f"order.{intent}"
+    request_key = f"query.{intent}" if intent in ["recommend", "confirm", "help", "error"] else f"order.{intent}"
 
     payload = intent_result.copy()
     payload.pop("intent", None)
@@ -160,7 +170,7 @@ async def handle_text(text: str):
 
 # 테스트용 실행
 if __name__ == "__main__":
-    user_input = "커피3개랑 달달한 음료 2개 추천해줘"
+    user_input = "아이스 아메리카노 하나줘"
     messages = make_messages(user_input)
     result = call_openai(messages)
     print("GPT 응답 결과:", result)
