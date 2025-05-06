@@ -47,22 +47,38 @@ SYSTEM_PROMPT = """
   - 예: {"tag:커피:bitter": 1} → '커피' 카테고리에서 쓴맛 나는 메뉴 1개 추천
 
 item 안에 들어갈 수 있는 정보:
-- name: 메뉴 이름
+- name: 메뉴 이름 (예: "아메리카노")
 - size: "S", "M", "L" 중 하나
 - shot: "extra" (샷 추가) 또는 "none" (샷 제거)
 - temperature: "hot" 또는 "ice"
+- count: 주문 수량. 예: {"count": 2}
+
+※ 사용자가 주문(intent: order)을 하면서 수량을 명시할 경우 item.count로 표현합니다.
+  예: "아이스 아메리카노 2개 줘" → item: { name: "아메리카노", temperature: "ice", count: 2 }
+
+※ 사용자가 size, shot, temperature 등 옵션을 명시하지 않은 경우, 해당 필드는 JSON에서 생략합니다. 기본값을 추정해 넣지 마세요.
 
 ※ intent는 항상 recommend, order, confirm, exit, help, error 중 하나로 설정해야 합니다.
 
 ※ 사용자가 '커피', '음료', '디저트', '디카페인'을 복수로 언급한 경우, categories를 배열 형태로 설정합니다.
 
+※ 사용자가 특정 카테고리를 명시하지 않고 일반적인 추천만 요청할 경우(예: “뭐 먹지?”, “추천해줘”, “메뉴 뭐 있지?” 등), 기본 categories는 ["커피", "음료", "디카페인", "디저트"]로 설정합니다.
+
+※ 사용자가 특정 카테고리를 언급하지 않고, 추천 조건만 명시한 경우 (예: "3000원 이하 추천해줘")에도 기본 categories는 ["커피", "음료", "디카페인", "디저트"]로 설정합니다.
+
 ※ 사용자가 '마실 것', '마실 거'처럼 음료 전반을 지칭하는 경우, categories는 ["커피", "음료", "디카페인"]를 모두 포함합니다.
+
+※ 사용자가 추천 수량을 명확히 언급하지 않고, 단일 추천만 원하는 뉘앙스("뭐 먹을까?", "추천해줘")일 경우 filters.count는 생략합니다.
 
 ※ 사용자가 '전체 메뉴', '다 보여줘', '모든 메뉴'를 요청하는 경우, intent는 confirm으로 설정하고 categories는 생략합니다.
 
-※ 사용자가 "커피 메뉴 보여줘", "디저트 뭐 있어?"처럼 특정 카테고리의 메뉴를 요청하면 intent는 "confirm", target은 "menu", categories는 해당 카테고리로 설정합니다.
+※ 사용자가 "커피 메뉴 보여줘", "디저트 뭐 있어?", "음료 종류 뭐 있어?", "디카페인 어떤 거 있어?"처럼 특정 카테고리의 메뉴를 요청하면 intent는 "confirm", target은 "menu", categories는 해당 카테고리로 설정합니다.
 
 ※ 사용자가 '시원한', '아이스'를 말하면 item.temperature를 "ice"로, '따뜻한', '추운'을 말하면 "hot"으로 설정합니다.
+
+※ 메뉴 이름이 "아이스 아메리카노", "뜨거운 카페라떼" 등인 경우, item.name은 "아메리카노", "카페라떼" 등으로 설정하고, 온도는 item.temperature로 따로 설정해줘.
+
+※ 사용자가 샷 추가를 요청하면 item.shot은 "extra", 샷 제거는 "none"으로 설정합니다.
 
 ※ 사용자가 '청량한', '톡 쏘는'을 말하면 filters.tag에 "refresh"를 추가합니다.
 
@@ -81,9 +97,12 @@ item 안에 들어갈 수 있는 정보:
 
 ※ 사용자가 카페인 없는 음료를 요청하면 filters.caffeine을 "decaf"로 설정하고, 필요에 따라 categories에 "디카페인"을 추가합니다.
 
+※ 사용자가 '빵', '케이크', '베이커리', '쿠키' 등을 요청하면 categories는 ["디저트"]로 설정합니다.
+
 ※ 사용자가 추천 개수를 요청하는 경우 (예: "3개 추천해줘", "여러 개 추천해줘")에는 filters.count를 사용합니다.
   - 명시된 숫자가 있을 경우 해당 숫자를 count로 사용
-  - 명확한 숫자가 없는 "여러 개"와 같은 표현은 기본값으로 3을 설정합니다.
+  - "여러 개", "몇 개"처럼 불명확한 표현이 있는 경우에만 기본값 3을 설정합니다.
+  - 단순히 "추천해줘", "뭐 먹지?"처럼 개수를 명시하지 않은 경우에는 count를 설정하지 않습니다.
 
 ※ 사용자가 특정 조건별로 인원이나 개수를 지정할 경우 (예: "남자 3명 여자 2명 마실 거 추천해줘", "단 거 3개 쓴 거 2개 추천해줘", "커피는 2개 디저트는 1개 추천해줘")에는 filters.group_counts를 사용합니다.
   - 예: {"gender_male": 3, "gender_female": 2}, {"sweet": 3, "bitter": 2}, 또는 {"커피": 2, "디저트": 1}
@@ -92,15 +111,29 @@ item 안에 들어갈 수 있는 정보:
 
 ※ 메뉴 추천(intent: recommend) 중 사용자가 사이즈 요청을 하면 item.size를 추가해 "S", "M", "L" 중 하나로 설정합니다.
 
+※ 사용자가 "OOO 주문해줘", "OOO 시켜줘", "OOO 하나 주세요"처럼 명령형으로 요청하는 경우, intent는 "order.add"로 설정하고 item.name에 메뉴명을 넣어주세요.
+
 ※ 메뉴 주문(intent: order.add, order.update) 중에는 item.name과 함께 필요한 옵션(size, shot 등)을 함께 설정해야 합니다.
 
-※ 사용자가 사이즈(size), 온도(temperature), 샷 추가(shot)와 관련된 변경 요청을 할 경우, 메뉴명이 명시되지 않더라도 intent를 order.update로 설정하고 관련 필드를 채워주세요. error로 처리하지 않습니다.
+※ 사용자가 "OOO 없애줘", "빼줘", "삭제해줘", "제거해줘"와 같이 메뉴를 장바구니에서 없애달라는 표현을 쓸 경우, intent는 "order.delete"로 설정하고 item.name에 해당 메뉴 이름을 넣습니다.
 
-※ 사용자가 추천 결과에 대해 "싫어", "다른 거", "좋아"와 같이 단답형으로 응답할 경우 현재 대화 흐름에 따라 다음과 같이 처리합니다:
-  - recommend 흐름 중: "싫어", "다른 거" → action: "reject" 또는 "retry"
-  - confirm 흐름 중(장바구니, 주문 내역 확인 등): "맞아" → action: "confirm", "아니야" → action: "modify"
-  - order 흐름 중: "수정할래", "변경할래" → action: "update", "취소할래" → intent: "exit"
-  - pay 흐름 중: "결제할게", "진행할게" → intent: "order.pay", "취소할래" → intent: "exit"
+※ 사용자가 '빵', '식빵', '모닝빵', '소세지빵', '바게트' 등을 언급한 경우 filters.tag에 "bread"를 추가합니다.
+
+※ 사용자가 '케이크', '생크림 케이크', '치즈케이크', '롤케이크' 등을 언급한 경우 filters.tag에 "cake"를 추가합니다.
+
+※ 사용자가 '쿠키', '초코칩 쿠키', '오트밀 쿠키' 등을 언급한 경우 filters.tag에 "cookie"를 추가합니다.
+
+※ 사용자가 사이즈(size), 온도(temperature), 샷 추가(shot)와 관련된 변경 요청을 할 경우, 메뉴명이 명시되지 않더라도 intent를 order.update로 설정하고 관련 필드를 채워주세요.
+
+※ 사용자가 단답형 응답("싫어", "다른 거", "좋아", "응", "맞아" 등)을 했을 경우,
+현재 대화 흐름을 몰라도 intent는 null로 설정하고, 다음 중 하나의 action만 설정합니다.
+- "싫어" → { "intent": null, "action": "reject" }
+- "다른 거" → { "intent": null, "action": "retry" }
+- "좋아", "맞아", "응" → { "intent": null, "action": "accept" }
+
+※ 단답형 응답에 intent는 절대 포함하지 마세요. action만 추출하세요.
+※ 이후 대화 흐름 판단은 백엔드가 캐싱된 context를 기준으로 처리합니다.
+
 
 ※ 사용자가 "어떻게 사용하는 거야", "주문은 어떻게 해", "뭘 말하면 돼?" 같이 사용법을 묻는 경우 intent는 "help"로 설정합니다.
 
@@ -172,7 +205,7 @@ async def handle_text(text: str):
 
 # 테스트용 실행
 if __name__ == "__main__":
-    user_input = "아이스 아메리카노 하나줘"
+    user_input = "오늘 날씨 어떰?"
     messages = make_messages(user_input)
     result = call_openai(messages)
     print("GPT 응답 결과:", result)
