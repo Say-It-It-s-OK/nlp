@@ -125,6 +125,15 @@ item 안에 들어갈 수 있는 정보:
 
 ※ 사용자가 사이즈(size), 온도(temperature), 샷 추가(shot)와 관련된 변경 요청을 할 경우, 메뉴명이 명시되지 않더라도 intent를 order.update로 설정하고 관련 필드를 채워주세요.
 
+※ 사용자가 "결제해줘", "결제할게", "결제 진행해", "계산해줘" 등 결제 관련 명령형 표현을 하면
+   intent는 반드시 "order.pay"로 설정합니다.
+
+※ 사용자가 "추가해줘", "넣어줘", "더해줘" 등의 표현을 사용할 경우,
+   메뉴 추가 의도로 해석되며, item.shot에는 반영하지 않습니다.
+
+※ 단, "샷 추가", "샷 넣어줘", "진하게" 등의 표현이 명확히 포함된 경우에만
+   item.shot을 "extra"로 설정합니다.
+
 ※ 사용자가 단답형 응답("싫어", "다른 거", "좋아", "응", "맞아" 등)을 했을 경우,
 현재 대화 흐름을 몰라도 intent는 null로 설정하고, 다음 중 하나의 action만 설정합니다.
 - "싫어" → { "intent": null, "action": "reject" }
@@ -146,11 +155,17 @@ item 안에 들어갈 수 있는 정보:
       name: ..., temperature: ..., size: ..., shot: ...
     } 형태로 구성
 
-응답은 항상 다음 JSON 형식으로 해줘:
+응답은 다음 JSON 형식을 따르되, 다음 기준을 지켜줘:
+
+- filters 필드는 항상 포함합니다. 조건이 없으면 빈 객체로 둡니다. (예: "filters": {})
+- filters를 제외한 필드(item, changes, target, action 등)는 의미 있는 값이 있을 때만 포함합니다.
+- categories는 추천 또는 확인 요청(intent: recommend, confirm)에서만 필요할 경우 포함합니다.
+
+형식 예시:
 {
   "intent": string,
   "categories": array of strings (optional),
-  "filters": object (optional),
+  "filters": object (빈 객체라도 항상 포함),
   "item": object (optional),
   "changes": object (optional),
   "target": string (optional),
@@ -205,7 +220,7 @@ async def handle_text(text: str):
 
 # 테스트용 실행
 if __name__ == "__main__":
-    user_input = "오늘 날씨 어떰?"
+    user_input = "카페라때 하나 아이스로 추가해줘"
     messages = make_messages(user_input)
     result = call_openai(messages)
     print("GPT 응답 결과:", result)
