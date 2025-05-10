@@ -194,9 +194,10 @@ def build_backend_payload(intent_result: dict) -> dict:
 async def send_to_backend(intent_result: dict):
     data = build_backend_payload(intent_result)
     async with httpx.AsyncClient() as client:
-        await client.post("http://localhost:3000/api/handle", json=data)
+        response = await client.post("http://localhost:3000/api/handle", json=data)
+        return response.json()
 
-def call_openai(messages: List[Dict[str, str]]) -> Dict:
+async def call_openai(messages: List[Dict[str, str]]) -> Dict:
     try:
         response = client.chat.completions.create(
             model=MODEL_NAME,
@@ -215,8 +216,9 @@ def call_openai(messages: List[Dict[str, str]]) -> Dict:
 
 async def handle_text(text: str):
     messages = make_messages(text)
-    result = call_openai(messages)
-    return result
+    intent_result = awiat call_openai(messages)
+    backend_response = await send_to_backend(intent_result)
+    return backend_response
 
 # 테스트용 실행
 if __name__ == "__main__":
