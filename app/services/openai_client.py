@@ -180,8 +180,8 @@ def make_messages(user_input: str) -> List[Dict[str, str]]:
     ]
 
 def build_backend_payload(intent_result: dict) -> dict:
-    intent = intent_result.get("intent")
-    request_key = f"query.{intent}" if intent in ["recommend", "confirm", "help", "error"] else f"order.{intent}"
+    intent = intent_result.get("intent", "")
+    request_key = f"query.{intent}" if intent else "query.error"
 
     payload = intent_result.copy()
     payload.pop("intent", None)
@@ -193,6 +193,8 @@ def build_backend_payload(intent_result: dict) -> dict:
 
 async def send_to_backend(intent_result: dict):
     data = build_backend_payload(intent_result)
+    data["sessionId"] = "test-session-001"
+
     async with httpx.AsyncClient() as client:
         response = await client.post("http://localhost:3000/api/handle", json=data)
         return response.json()
@@ -207,22 +209,30 @@ async def call_openai(messages: List[Dict[str, str]]) -> Dict:
         content = response.choices[0].message.content
         parsed = json.loads(content)
 
-        # 테스트 중이므로 백엔드 전송은 주석 처리
-        # asyncio.run(send_to_backend(parsed))
-
+        #두번 전송되서 하나는 주석처리리
+        #await send_to_backend(parsed)
         return parsed
     except Exception as e:
         return {"error": str(e)}
 
 async def handle_text(text: str):
     messages = make_messages(text)
-    intent_result = awiat call_openai(messages)
+    intent_result = await call_openai(messages)
     backend_response = await send_to_backend(intent_result)
     return backend_response
 
 # 테스트용 실행
+#if __name__ == "__main__":
+ #   user_input = "카페라때 하나 아이스로 추가해줘"
+  #  messages = make_messages(user_input)
+   # result = call_openai(messages)
+   # print("GPT 응답 결과:", result)
+   
 if __name__ == "__main__":
-    user_input = "카페라때 하나 아이스로 추가해줘"
-    messages = make_messages(user_input)
-    result = call_openai(messages)
-    print("GPT 응답 결과:", result)
+    user_input = "장바구니 보여줘"
+
+    async def test():
+        result = await handle_text(user_input)
+        print("최종 백엔드 응답 결과:", result)
+
+    asyncio.run(test())
