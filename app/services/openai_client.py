@@ -134,6 +134,9 @@ item.temperature에 "ice" 또는 "hot"으로 따로 설정하고, 나머지 부�
 
 ※ 사용자가 '쿠키', '초코칩 쿠키', '오트밀 쿠키' 등을 언급한 경우 filters.tag에 "cookie"를 추가합니다.
 
+※ 사용자가 옵션 변경 요청(사이즈, 온도, 샷 등)을 하면서 **메뉴 이름을 함께 언급한 경우**, item.name은 반드시 포함해야 합니다.  
+  예: "카페라떼 사이즈 M으로 바꿔줘" → item.name: "카페라떼", changes.size: "M"
+
 ※ 사용자가 사이즈(size), 온도(temperature), 샷 추가(shot)와 관련된 변경 요청을 할 경우, 메뉴명이 명시되지 않더라도 intent를 order.update로 설정하고 관련 필드를 채워주세요.
 
 ※ 사용자가 "결제해줘", "결제할게", "결제 진행해", "계산해줘" 등 결제 관련 명령형 표현을 하면
@@ -254,7 +257,7 @@ async def handle_text(text: str):
    # print("GPT 응답 결과:", result)
    
 if __name__ == "__main__":
-    user_input = "음료 추천해줘"
+    user_input = "카페라떼 사이즈는 M이고 아이스로 바꿔주세요"
 
     async def test():
         result = await handle_text(user_input)
