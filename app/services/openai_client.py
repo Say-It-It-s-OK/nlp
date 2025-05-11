@@ -76,7 +76,13 @@ item 안에 들어갈 수 있는 정보:
 
 ※ 사용자가 '시원한', '아이스'를 말하면 item.temperature를 "ice"로, '따뜻한', '추운'을 말하면 "hot"으로 설정합니다.
 
-※ 메뉴 이름이 "아이스 아메리카노", "뜨거운 카페라떼" 등인 경우, item.name은 "아메리카노", "카페라떼" 등으로 설정하고, 온도는 item.temperature로 따로 설정해줘.
+※ 메뉴 이름에 "아이스", "뜨거운" 등 **온도를 의미하는 수식어**가 포함된 경우에만,
+item.temperature에 "ice" 또는 "hot"으로 따로 설정하고, 나머지 부분은 item.name에 **전체 메뉴 이름 그대로** 유지해줘.
+
+예: "아이스 아메리카노" → name: "아메리카노", temperature: "ice"
+
+단, "자바칩 푸라푸치노", "초콜릿 쿠키 프라푸치노"처럼 온도와 무관한 재료명 또는 형용사가 포함된 경우는,
+**전체 문장을 그대로 item.name으로 설정해야 하며 분리하지 마세요.**
 
 ※ 사용자가 샷 추가를 요청하면 item.shot은 "extra", 샷 제거는 "none"으로 설정합니다.
 
@@ -143,6 +149,14 @@ item 안에 들어갈 수 있는 정보:
 ※ 단답형 응답에 intent는 절대 포함하지 마세요. action만 추출하세요.
 ※ 이후 대화 흐름 판단은 백엔드가 캐싱된 context를 기준으로 처리합니다.
 
+※ 사용자가 특정 메뉴(예: “아이스티 있어?”, “카페라떼 있나요?”)를 직접 물어보는 경우
+→ intent는 "confirm", target은 "menu", item.name에 해당 메뉴 이름 포함
+
+※ 사용자가 "디저트 뭐 주문했지?", "커피 주문했어?", "음료 뭐 시켰더라?" 등 카테고리 단위로 주문 내역을 확인하는 경우
+→ intent는 "confirm", target은 "order", categories에 해당 카테고리 설정
+
+※ 사용자가 "OOO 주문해줘", "OOO 시켜줘", "OOO 하나 주세요"처럼 명령형으로 요청하는 경우,
+intent는 "order.add"로 설정하고 item.name에 메뉴명을 넣어주세요.
 
 ※ 사용자가 "어떻게 사용하는 거야", "주문은 어떻게 해", "뭘 말하면 돼?" 같이 사용법을 묻는 경우 intent는 "help"로 설정합니다.
 
@@ -180,8 +194,15 @@ def make_messages(user_input: str) -> List[Dict[str, str]]:
     ]
 
 def build_backend_payload(intent_result: dict) -> dict:
-    intent = intent_result.get("intent", "")
-    request_key = f"query.{intent}" if intent else "query.error"
+    intent = intent_result.get("intent")
+    action = intent_result.get("action")
+
+    if intent:
+        request_key = f"query.{intent}"
+    elif action:
+        request_key = "query.reply"
+    else:
+        request_key = "query.error"
 
     payload = intent_result.copy()
     payload.pop("intent", None)
@@ -190,6 +211,7 @@ def build_backend_payload(intent_result: dict) -> dict:
         "request": request_key,
         "payload": payload
     }
+
 
 async def send_to_backend(intent_result: dict):
     data = build_backend_payload(intent_result)
@@ -209,8 +231,6 @@ async def call_openai(messages: List[Dict[str, str]]) -> Dict:
         content = response.choices[0].message.content
         parsed = json.loads(content)
 
-        #두번 전송되서 하나는 주석처리리
-        #await send_to_backend(parsed)
         return parsed
     except Exception as e:
         return {"error": str(e)}
@@ -229,7 +249,7 @@ async def handle_text(text: str):
    # print("GPT 응답 결과:", result)
    
 if __name__ == "__main__":
-    user_input = "장바구니 보여줘"
+    user_input = "커피 추천 해줘"
 
     async def test():
         result = await handle_text(user_input)
