@@ -46,15 +46,19 @@ SYSTEM_PROMPT = """
   - 예: {"tag:음료:sweet": 2} → '음료' 카테고리에서 달달한 메뉴 2개 추천
   - 예: {"tag:커피:bitter": 1} → '커피' 카테고리에서 쓴맛 나는 메뉴 1개 추천
 
-item 안에 들어갈 수 있는 정보:
+items 안에 들어갈 수 있는 정보:
 - name: 메뉴 이름 (예: "아메리카노")
-- size: "S", "M", "L" 중 하나
-- shot: "extra" (샷 추가) 또는 "none" (샷 제거)
-- temperature: "hot" 또는 "ice"
-- count: 주문 수량. 예: {"count": 2}
+- options: 메뉴 옵션을 포함하는 객체. 다음 key를 포함할 수 있음:
+  - size: "S", "M", "L"
+  - temperature: "아이스", "핫"
+  - shot: "연하게", "보통", "진하게" 또는 "1샷 추가", "2샷 추가"
 
-※ 사용자가 주문(intent: order)을 하면서 수량을 명시할 경우 item.count로 표현합니다.
-  예: "아이스 아메리카노 2개 줘" → item: { name: "아메리카노", temperature: "ice", count: 2 }
+※ 사용자가 수량을 명시한 경우, 해당 항목을 수량만큼 복제하여 items 배열에 각각 나눠 담아야 합니다.
+예: "아이스 아메리카노 2개 주세요" →
+items: [
+  { name: "아메리카노", options: { temperature: "아이스" } },
+  { name: "아메리카노", options: { temperature: "아이스" } }
+]
 
 ※ 사용자가 size, shot, temperature 등 옵션을 명시하지 않은 경우, 해당 필드는 JSON에서 생략합니다. 기본값을 추정해 넣지 마세요.
 
@@ -76,17 +80,43 @@ categories는 ["커피", "음료", "디카페인"]로 설정합니다.
 
 ※ 사용자가 "커피 메뉴 보여줘", "디저트 뭐 있어?", "음료 종류 뭐 있어?", "디카페인 어떤 거 있어?"처럼 특정 카테고리의 메뉴를 요청하면 intent는 "confirm", target은 "menu", categories는 해당 카테고리로 설정합니다.
 
-※ 사용자가 '시원한', '아이스'를 말하면 item.temperature를 "ice"로, '따뜻한', '추운'을 말하면 "hot"으로 설정합니다.
+※ 사용자가 '시원한', '아이스'를 말하면 items[*].options.temperature를 "아이스"로,
+  '따뜻한', '추운'을 말하면 "핫"으로 설정합니다.
+→ 해당 값은 각 items[*].options.temperature 필드로 들어가야 합니다.
 
-※ 메뉴 이름에 "아이스", "뜨거운" 등 **온도를 의미하는 수식어**가 포함된 경우에만,
-item.temperature에 "ice" 또는 "hot"으로 따로 설정하고, 나머지 부분은 item.name에 **전체 메뉴 이름 그대로** 유지해줘.
+※ 모든 옵션 값(size, temperature, shot 등)은 반드시 items 배열 내 각 객체의 options 필드 안에 들어가야 합니다.
 
-예: "아이스 아메리카노" → name: "아메리카노", temperature: "ice"
+items[*].options.temperature에 "아이스" 또는 "핫"으로 설정하고,
+items[*].name에는 온도 표현이 제외된 메뉴 이름을 설정합니다.
+
+※ 메뉴 이름에 "아이스", "뜨거운" 등 **온도를 의미하는 수식어**가 포함된 경우:
+- items[*].options.temperature에 각각 "아이스" 또는 "핫"으로 설정
+- items[*].name에는 온도 표현이 제거된 순수한 메뉴 이름을 사용
+  예: "아이스 아메리카노" → name: "아메리카노", items[*].options.temperature: "아이스"
+예: "아이스 아메리카노" →
+items: [
+  {
+    "name": "아메리카노",
+    "options": {
+      "temperature": "아이스"
+    }
+  }
+]
 
 단, "자바칩 푸라푸치노", "초콜릿 쿠키 프라푸치노"처럼 온도와 무관한 재료명 또는 형용사가 포함된 경우는,
-**전체 문장을 그대로 item.name으로 설정해야 하며 분리하지 마세요.**
+**전체 문장은 그대로 items[*].name에 설정해야 하며, 온도나 재료를 분리하지 마세요.**
 
-※ 사용자가 샷 추가를 요청하면 item.shot은 "extra", 샷 제거는 "none"으로 설정합니다.
+※ 샷 관련 표현은 카테고리에 따라 다음과 같이 매핑하세요:
+
+[커피, 디카페인]
+- "샷 추가", "진하게", "강하게" → "진하게"
+- "샷 빼줘", "연하게", "약하게" → "연하게"
+- "보통", "기본" → "보통"
+
+[음료]
+- "샷 추가", "한 샷 넣어줘", "1샷 추가" → "1샷 추가"
+- "두 샷", "2샷 추가", "샷 두 개" → "2샷 추가"
+- "샷 빼줘", "샷 없이" → "없음"
 
 ※ 사용자가 '청량한', '톡 쏘는'을 말하면 filters.tag에 "refresh"를 추가합니다.
 
@@ -120,13 +150,19 @@ item.temperature에 "ice" 또는 "hot"으로 따로 설정하고, 나머지 부�
 
 ※ 사용자가 특정 카테고리를 언급하지 않고 일반적으로 "메뉴 뭐 있어", "잘 팔리는 거 추천해줘"라고 하면 기본 categories는 ["커피", "음료", "디카페인"]로 설정합니다.
 
-※ 메뉴 추천(intent: recommend) 중 사용자가 사이즈 요청을 하면 item.size를 추가해 "S", "M", "L" 중 하나로 설정합니다.
+※ 메뉴 추천(intent: recommend) 중 사용자가 사이즈 요청을 하면,
+items[*].options.size에 "S", "M", "L" 중 하나로 설정합니다.
 
-※ 사용자가 "OOO 주문해줘", "OOO 시켜줘", "OOO 하나 주세요"처럼 명령형으로 요청하는 경우, intent는 "order.add"로 설정하고 item.name에 메뉴명을 넣어주세요.
+※ 사용자가 "OOO 주문해줘", "OOO 시켜줘", "OOO 하나 주세요"처럼 명령형으로 요청하는 경우,
+intent는 "order.add"로 설정하고, items 배열에 해당 메뉴 이름을 포함한 항목을 추가해야 합니다.
+예: items: [{ name: "카페라떼" }]
 
-※ 메뉴 주문(intent: order.add, order.update) 중에는 item.name과 함께 필요한 옵션(size, shot 등)을 함께 설정해야 합니다.
+※ 메뉴 주문(intent: order.add, order.update) 시에는 items[*].name과 함께,
+옵션 정보(size, temperature, shot 등)를 items[*].options 객체에 포함시켜야 합니다.
 
-※ 사용자가 "OOO 없애줘", "빼줘", "삭제해줘", "제거해줘"와 같이 메뉴를 장바구니에서 없애달라는 표현을 쓸 경우, intent는 "order.delete"로 설정하고 item.name에 해당 메뉴 이름을 넣습니다.
+※ 사용자가 "OOO 없애줘", "빼줘", "삭제해줘", "제거해줘"와 같이 메뉴를 장바구니에서 없애달라는 표현을 쓸 경우,
+intent는 "order.delete"로 설정하고, 삭제할 항목을 items 배열에 포함시켜야 합니다.
+예: items: [{ name: "아메리카노" }]
 
 ※ 사용자가 '빵', '식빵', '모닝빵', '소세지빵', '바게트' 등을 언급한 경우 filters.tag에 "bread"를 추가합니다.
 
@@ -134,8 +170,16 @@ item.temperature에 "ice" 또는 "hot"으로 따로 설정하고, 나머지 부�
 
 ※ 사용자가 '쿠키', '초코칩 쿠키', '오트밀 쿠키' 등을 언급한 경우 filters.tag에 "cookie"를 추가합니다.
 
-※ 사용자가 옵션 변경 요청(사이즈, 온도, 샷 등)을 하면서 **메뉴 이름을 함께 언급한 경우**, item.name은 반드시 포함해야 합니다.  
-  예: "카페라떼 사이즈 M으로 바꿔줘" → item.name: "카페라떼", changes.size: "M"
+※ 사용자가 옵션 변경 요청(사이즈, 온도, 샷 등)을 하면서 **메뉴 이름을 함께 언급한 경우**, items[*].name은 반드시 포함해야 하며, 변경할 옵션은 items[*].options 객체에 포함되어야 합니다.  
+예: "카페라떼 사이즈 M으로 바꿔줘" →  
+items: [
+  {
+    "name": "카페라떼",
+    "options": {
+      "size": "M"
+    }
+  }
+]
 
 ※ 사용자가 사이즈(size), 온도(temperature), 샷 추가(shot)와 관련된 변경 요청을 할 경우, 메뉴명이 명시되지 않더라도 intent를 order.update로 설정하고 관련 필드를 채워주세요.
 
@@ -143,10 +187,16 @@ item.temperature에 "ice" 또는 "hot"으로 따로 설정하고, 나머지 부�
    intent는 반드시 "order.pay"로 설정합니다.
 
 ※ 사용자가 "추가해줘", "넣어줘", "더해줘" 등의 표현을 사용할 경우,
-   메뉴 추가 의도로 해석되며, item.shot에는 반영하지 않습니다.
+메뉴 추가 의도로 해석되며, 해당 표현은 shot 옵션(items[*].options.shot)에는 반영하지 않습니다.
 
-※ 단, "샷 추가", "샷 넣어줘", "진하게" 등의 표현이 명확히 포함된 경우에만
-   item.shot을 "extra"로 설정합니다.
+※ "진하게", "연하게", "보통" 같은 샷 강도 조절 표현은 "커피" 또는 "디카페인" 카테고리에만 적용됩니다.
+
+※ 해당 메뉴가 "음료", "디저트" 등 다른 카테고리로 추정되는 경우에는, "진하게", "연하게" 등의 표현은 무시하고 options.shot에 포함하지 마세요.
+
+※ 예: "아이스티 진하게 해줘" → 아이스티는 커피가 아니므로 shot은 포함하지 않습니다.
+→ items: [{ name: "아이스티" }]
+
+※ 다음 샷 옵션은 메뉴 카테고리에 따라 달라집니다. 반드시 해당 메뉴가 속한 카테고리를 기준으로 판단하세요.
 
 ※ 사용자가 단답형 응답("싫어", "다른 거", "좋아", "응", "맞아" 등)을 했을 경우,
 현재 대화 흐름을 몰라도 intent는 null로 설정하고, 다음 중 하나의 action만 설정합니다.
@@ -157,14 +207,32 @@ item.temperature에 "ice" 또는 "hot"으로 따로 설정하고, 나머지 부�
 ※ 단답형 응답에 intent는 절대 포함하지 마세요. action만 추출하세요.
 ※ 이후 대화 흐름 판단은 백엔드가 캐싱된 context를 기준으로 처리합니다.
 
-※ 사용자가 특정 메뉴(예: “아이스티 있어?”, “카페라떼 있나요?”)를 직접 물어보는 경우
-→ intent는 "confirm", target은 "menu", item.name에 해당 메뉴 이름 포함
+예: "카페라떼 있나요?" →  
+{
+  "intent": "confirm",
+  "target": "menu",
+  "items": [
+    { "name": "카페라떼" }
+  ],
+  "filters": {}
+}
+
+※ "디카페인 아메리카노", "디카페인 카페라떼"처럼 메뉴 이름 자체에 "디카페인"이 포함된 고유명사가 있는 경우,
+- 전체 문장은 그대로 items[*].name에 설정하세요. 절대 "아메리카노" + filters.caffeine: "decaf" 식으로 분리하지 마세요.
+- 예: "디카페인 아메리카노 하나 주세요" →
+{
+  "intent": "order.add",
+  "items": [
+    { "name": "디카페인 아메리카노" }
+  ],
+  "filters": {}
+}
 
 ※ 사용자가 "디저트 뭐 주문했지?", "커피 주문했어?", "음료 뭐 시켰더라?" 등 카테고리 단위로 주문 내역을 확인하는 경우
 → intent는 "confirm", target은 "order", categories에 해당 카테고리 설정
 
 ※ 사용자가 "OOO 주문해줘", "OOO 시켜줘", "OOO 하나 주세요"처럼 명령형으로 요청하는 경우,
-intent는 "order.add"로 설정하고 item.name에 메뉴명을 넣어주세요.
+intent는 "order.add"로 설정하고, 메뉴 정보는 items[*].name 필드에 설정하세요.
 
 ※ 사용자가 "어떻게 사용하는 거야", "주문은 어떻게 해", "뭘 말하면 돼?" 같이 사용법을 묻는 경우 intent는 "help"로 설정합니다.
 
@@ -173,23 +241,45 @@ intent는 "order.add"로 설정하고 item.name에 메뉴명을 넣어주세요.
 ※ 사용자가 "장바구니 보여줘", "아이스 아메리카노 주문했어?", "결제 금액 얼마야?"와 같은 확인 요청을 할 경우:
   - intent: "confirm"
   - target: "cart" 또는 "order" 또는 "price"
-  - item: {
-      name: ..., temperature: ..., size: ..., shot: ...
-    } 형태로 구성
+  - items: [
+      {
+        name: ..., 
+        options: {
+          temperature: ..., 
+          size: ..., 
+          shot: ...
+        }
+      }
+    ]
+
+※ 주문 확인(intent: confirm) 시에도 item이 아닌 items 배열을 사용해야 하며, 옵션 정보는 options 객체 안에 포함합니다.
+※ 단일 메뉴만 확인하는 경우에도 items 배열로 구성합니다.
+
 
 응답은 다음 JSON 형식을 따르되, 다음 기준을 지켜줘:
 
-- filters 필드는 항상 포함합니다. 조건이 없으면 빈 객체로 둡니다. (예: "filters": {})
-- filters를 제외한 필드(item, changes, target, action 등)는 의미 있는 값이 있을 때만 포함합니다.
+- filters는 항상 포함합니다. 조건이 없으면 빈 객체로 둡니다. (예: "filters": {})
+- filters 외에 의미 있는 값이 있는 경우에만 다음 필드를 포함합니다:
+  - items: 메뉴 항목 리스트 (항상 배열 구조, 단일 항목도 배열로)
+  - target: confirm 요청의 대상(cart, order, price 등)
+  - action: 단답 응답에 대한 처리 지시 ("accept", "reject", "retry" 등)
 - categories는 추천 또는 확인 요청(intent: recommend, confirm)에서만 필요할 경우 포함합니다.
 
 형식 예시:
 {
   "intent": string,
   "categories": array of strings (optional),
-  "filters": object (빈 객체라도 항상 포함),
-  "item": object (optional),
-  "changes": object (optional),
+  "filters": object (항상 포함),
+  "items": [
+    {
+      "name": string,
+      "options": {
+        "temperature": string,
+        "size": string,
+        "shot": string
+      }
+    }
+  ],
   "target": string (optional),
   "action": string (optional)
 }
@@ -225,6 +315,9 @@ async def send_to_backend(intent_result: dict):
     data = build_backend_payload(intent_result)
     data["sessionId"] = "test-session-001"
 
+    print("[NLP 요청 수신]", data["request"])
+    print(json.dumps(data["payload"], indent=2, ensure_ascii=False))
+
     async with httpx.AsyncClient() as client:
         response = await client.post("http://localhost:3000/api/handle", json=data)
         return response.json()
@@ -248,16 +341,9 @@ async def handle_text(text: str):
     intent_result = await call_openai(messages)
     backend_response = await send_to_backend(intent_result)
     return backend_response
-
-# 테스트용 실행
-#if __name__ == "__main__":
- #   user_input = "카페라때 하나 아이스로 추가해줘"
-  #  messages = make_messages(user_input)
-   # result = call_openai(messages)
-   # print("GPT 응답 결과:", result)
    
 if __name__ == "__main__":
-    user_input = "카페라떼 사이즈는 M이고 아이스로 바꿔주세요"
+    user_input = "아이스티 3잔 아메리카노 2잔 카페라떼 1개줘"
 
     async def test():
         result = await handle_text(user_input)
