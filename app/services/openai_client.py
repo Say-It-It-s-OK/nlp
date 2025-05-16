@@ -259,6 +259,21 @@ intent는 "order.add"로 설정하고, 메뉴 정보는 items[*].name 필드에 
 ※ 주문 확인(intent: confirm) 시에도 item이 아닌 items 배열을 사용해야 하며, 옵션 정보는 options 객체 안에 포함합니다.
 ※ 단일 메뉴만 확인하는 경우에도 items 배열로 구성합니다.
 
+※ 사용자가 이전에 메뉴명을 언급했으나 옵션(size, temperature 등)을 지정하지 않아 추가로 응답하는 경우(예: "사이즈는 M으로요", "아이스로요")에는,
+- items[*] 객체에 name 필드를 포함하지 마세요.
+- 대신 options만 포함한 객체로 구성해주세요.
+
+예: "아이스로요"
+→ items: [
+    {
+      "options": {
+        "temperature": "아이스"
+      }
+    }
+  ]
+
+→ 절대로 "name": "" 같이 빈 문자열로 name을 넣지 마세요.
+→ 백엔드는 이전 pending 항목의 name을 기준으로 자동 매칭합니다.
 
 응답은 다음 JSON 형식을 따르되, 다음 기준을 지켜줘:
 
@@ -347,7 +362,7 @@ async def handle_text(text: str):
     return backend_response
    
 if __name__ == "__main__":
-    user_input = "아이스티 3잔 아메리카노 2잔 카페라떼 1개줘"
+    user_input = "아메리카노 하나 줘"
 
     async def test():
         result = await handle_text(user_input)
