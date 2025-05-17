@@ -220,13 +220,53 @@ items: [
 
 ※ 다음 샷 옵션은 메뉴 카테고리에 따라 달라집니다. 반드시 해당 메뉴가 속한 카테고리를 기준으로 판단하세요.
 
-※ 사용자가 단답형 응답("싫어", "다른 거", "좋아", "응", "맞아" 등)을 했을 경우,
-현재 대화 흐름을 몰라도 intent는 null로 설정하고, 다음 중 하나의 action만 설정합니다.
-- "싫어" → { "intent": null, "action": "reject" }
-- "다른 거" → { "intent": null, "action": "retry" }
-- "좋아", "맞아", "응" → { "intent": null, "action": "accept" }
+※ 중요한 예외 처리 규칙 (반드시 준수):
 
-※ 단답형 응답에 intent는 절대 포함하지 마세요. action만 추출하세요.
+사용자의 짧은 응답이 다음의 옵션 변경 표현에 해당되면, 절대로 단답형으로 처리하지 마세요.
+반드시 intent: "order.update"로 설정하고, 각 표현에 맞는 옵션 정보를 items[*].options에 설정합니다.
+
+다음 표현들은 단답형(action-only)이 아닙니다. 반드시 intent와 options를 포함해야 합니다:
+-사이즈 옵션 (items[*].options.size):
+  -"M으로", "L로", "S로", "M", "L", "S"
+
+-온도 옵션 (items[*].options.temperature):
+  -"뜨겁게", "따뜻하게", "아이스로", "핫", "아이스"
+
+샷 강도 옵션 (items[*].options.shot):
+  -"샷 추가", "진하게", "연하게", "보통"
+
+예시 문장과 응답 형식:
+-예 : "M"
+{
+  "intent": "order.update",
+  "items": [
+    {
+      "options": {
+        "size": "M"
+      }
+    }
+  ],
+  "filters": {}
+}
+
+-예 : "아이스"
+{
+  "intent": "order.update",
+  "items": [
+    {
+      "options": {
+        "temperature": "아이스"
+      }
+    }
+  ],
+  "filters": {}
+}
+※ 키오스크가 "사이즈를 선택해주세요" 등 옵션을 물었을 때, 사용자가 "M", "L" 등 옵션만으로 답한 경우도 반드시 위와 같은 방식으로 처리합니다.
+반면, 다음처럼 단순히 수용/거절/변경 요청을 표현한 경우에는 action만 추출하며 intent는 절대 설정하지 않습니다.
+-"싫어", "아니야" → { "intent": null, "action": "reject" }
+-"다른 거", "그건 말고" → { "intent": null, "action": "retry" }
+-"좋아", "응" → { "intent": null, "action": "accept" }
+
 ※ 이후 대화 흐름 판단은 백엔드가 캐싱된 context를 기준으로 처리합니다.
 
 예: "카페라떼 있나요?" →  
@@ -261,6 +301,11 @@ items: [
 intent는 "order.add"로 설정하고, 메뉴 정보는 items[*].name 필드에 설정하세요.
 
 ※ 사용자가 "어떻게 사용하는 거야", "주문은 어떻게 해", "뭘 말하면 돼?" 같이 사용법을 묻는 경우 intent는 "help"로 설정합니다.
+
+※ 사용자가 주문을 중단하려는 표현("그만할래", "주문 안 할래", "다시 할래", "처음으로 돌아가", "메인으로", "그냥 나갈게", "끝낼래" 등)을 사용할 경우:
+- intent는 "exit"으로 설정합니다.
+- filters, items, categories 등 다른 필드는 포함하지 않습니다.
+- 예: "그만할래요" → { "intent": "exit", "filters": {} }
 
 ※ 사용자 요청이 키오스크 주문과 관련 없는 경우는 intent를 "error"로 설정합니다.
 
@@ -351,10 +396,9 @@ def build_backend_payload(intent_result: dict) -> dict:
         "payload": payload
     }
 
-
-async def send_to_backend(intent_result: dict):
+async def send_to_backend(intent_result: dict, session_id: str):
     data = build_backend_payload(intent_result)
-    data["sessionId"] = "test-session-001"
+    data["sessionId"] = session_id 
 
     print("[NLP 요청 수신]", data["request"])
     print(json.dumps(data["payload"], indent=2, ensure_ascii=False))
@@ -377,17 +421,17 @@ async def call_openai(messages: List[Dict[str, str]]) -> Dict:
     except Exception as e:
         return {"error": str(e)}
 
-async def handle_text(text: str):
+async def handle_text(text: str, session_id: str):
     messages = make_messages(text)
     intent_result = await call_openai(messages)
-    backend_response = await send_to_backend(intent_result)
+    backend_response = await send_to_backend(intent_result, session_id)
     return backend_response
-   
+
 if __name__ == "__main__":
-    user_input = "아메리카노 하나 줘"
+    user_input = "m으로"
 
     async def test():
-        result = await handle_text(user_input)
+        result = await handle_text(user_input, "test-session-001")
         print("최종 백엔드 응답 결과:", result)
 
     asyncio.run(test())
