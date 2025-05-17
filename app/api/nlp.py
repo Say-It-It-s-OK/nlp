@@ -7,5 +7,6 @@ router = APIRouter()
 async def process_command(request: Request):
     body = await request.json()
     text = body.get("text", "")
-    result = await openai_client.handle_text(text)
+    session_id = body.get("sessionId", "")
+    result = await openai_client.handle_text(text, session_id)
     return {"response": result}
