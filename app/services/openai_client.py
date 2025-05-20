@@ -198,9 +198,76 @@ intent는 "order.add"로 설정하고, items 배열에 해당 메뉴 이름을 �
 ※ 메뉴 주문(intent: order.add, order.update) 시에는 items[*].name과 함께,
 옵션 정보(size, temperature, shot 등)를 items[*].options 객체에 포함시켜야 합니다.
 
-※ 사용자가 "OOO 없애줘", "빼줘", "삭제해줘", "제거해줘"와 같이 메뉴를 장바구니에서 없애달라는 표현을 쓸 경우,
-intent는 "order.delete"로 설정하고, 삭제할 항목을 items 배열에 포함시켜야 합니다.
-예: items: [{ name: "아메리카노" }]
+※ 사용자가 'OOO 없애줘', 'OOO 빼줘', '삭제해줘', '제거해줘'와 같이 메뉴를 장바구니에서 없애달라는 표현을 한 경우:
+
+- intent는 "order.delete"로 설정합니다.
+- 삭제할 항목은 items[*] 배열로 구성합니다.
+- 아래 조건에 따라 name, options 등을 정확히 설정합니다.
+- 동일한 항목을 여러 개 삭제할 경우, 해당 객체를 수량만큼 반복해서 배열에 포함합니다. count는 사용하지 않습니다.
+
+1. 단순 삭제 요청 (이름만 존재):
+  - 예: "카페라떼 삭제해줘" →  
+    items: [
+      { "name": "카페라떼" }
+    ]
+
+2. 옵션이 있는 삭제 요청:
+  - 예: "아이스 아메리카노 삭제해줘" →  
+    items: [
+      {
+        "name": "아메리카노",
+        "options": {
+          "temperature": "아이스"
+        }
+      }
+    ]
+
+  - 예: "M 사이즈 카페라떼 삭제해줘" →  
+    items: [
+      {
+        "name": "카페라떼",
+        "options": {
+          "size": "M"
+        }
+      }
+    ]
+
+3. 복수 삭제 요청 (수량이 명시된 경우):
+  - 예: "카페라떼 2개 삭제해줘" →  
+    items: [
+      { "name": "카페라떼" },
+      { "name": "카페라떼" }
+    ]
+
+  - 예: "아이스 아메리카노 2개, 핫 아메리카노 1개 삭제해줘" →  
+    items: [
+      {
+        "name": "아메리카노",
+        "options": { "temperature": "아이스" }
+      },
+      {
+        "name": "아메리카노",
+        "options": { "temperature": "아이스" }
+      },
+      {
+        "name": "아메리카노",
+        "options": { "temperature": "핫" }
+      }
+    ]
+
+4. 전체 삭제 요청 (장바구니 비우기):
+  - 예: "전부 삭제해줘", "장바구니 비워줘" →  
+    intent: "order.delete"  
+    action: "clear"  
+    (이 경우 items는 포함하지 않습니다)
+
+※ 삭제 요청에는 count 필드를 사용하지 않습니다.  
+※ 동일 항목은 개수만큼 객체를 반복하여 배열에 포함해주세요.  
+※ 백엔드는 이 배열을 기반으로 각 항목을 순차적으로 확인하고 삭제 처리합니다 (pending 방식).
+※ 사용자가 수량을 말하지 않은 경우, 기본적으로 1개만 삭제하도록 items 배열에 해당 항목 1개만 포함합니다.
+
+
+※ `items[*].options`가 명시된 경우, 해당 옵션이 정확히 일치하는 항목만 삭제 대상으로 처리합니다.
 
 ※ 사용자가 '빵', '식빵', '모닝빵', '소세지빵', '바게트' 등을 언급한 경우 filters.tag에 "bread"를 추가합니다.
 
@@ -444,7 +511,7 @@ async def handle_text(text: str, session_id: str):
     return backend_response
 
 if __name__ == "__main__":
-    user_input = "음료 추천해줘"
+    user_input = "사이즈는 l로 바꿔줘"
 
     async def test():
         result = await handle_text(user_input, "test-session-001")
