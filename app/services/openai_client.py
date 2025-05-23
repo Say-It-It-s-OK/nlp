@@ -360,6 +360,59 @@ items: [
 
 ※ 사용자가 사이즈(size), 온도(temperature), 샷 추가(shot)와 관련된 변경 요청을 할 경우, 메뉴명이 명시되지 않더라도 intents에 "order.update"를 포함하고 관련 필드를 채워주세요.
 
+※ 사용자가 옵션만 바꾸는 경우(예: "아이스 아메리카노를 핫으로 바꿔줘")에는 intents를 ["order.update"]로 설정하고, items[*] 안에 from과 to 객체를 사용합니다.
+예:
+{
+  "intents": ["order.update"],
+  "items": [
+    {
+      "from": {
+        "name": "아메리카노",
+        "options": {
+          "temperature": "아이스"
+        }
+      },
+      "to": {
+        "name": "아메리카노",
+        "options": {
+          "temperature": "핫"
+        }
+      }
+    }
+  ],
+  "filters": {}
+}
+→ name은 동일하고 options만 다를 경우에만 이 구조를 사용합니다.
+
+※ 사용자가 메뉴 이름 자체를 바꾸는 경우(예: "카페라떼를 아메리카노로 바꿔줘")에는 intents를 ["order.delete", "order.add"]로 설정하고, 각각 해당 항목을 items 배열에 나눠서 구성합니다.
+예:
+{
+  "intents": ["order.delete", "order.add"],
+  "items": [
+    { "name": "카페라떼" },
+    { "name": "아메리카노" }
+  ],
+  "filters": {}
+}
+
+※ 사용자가 메뉴 이름과 옵션을 함께 바꾸는 경우(예: "카페라떼를 아이스 아메리카노로 바꿔줘")에도 동일하게 "order.delete" + "order.add"의 복합 intent 구조로 처리합니다.
+예:
+{
+  "intents": ["order.delete", "order.add"],
+  "items": [
+    { "name": "카페라떼" },
+    {
+      "name": "아메리카노",
+      "options": {
+        "temperature": "아이스"
+      }
+    }
+  ],
+  "filters": {}
+}
+※ from/to는 동일한 메뉴의 옵션만 바뀌는 경우에만 사용하세요.
+메뉴 이름이 달라지는 경우에는 절대 사용하지 않습니다.
+
 ※ 사용자가 "결제해줘", "결제할게", "결제 진행해", "계산해줘" 등 결제 관련 명령형 표현을 하면
    intents에는 반드시 "order.pay"를 포함합니다.
 
