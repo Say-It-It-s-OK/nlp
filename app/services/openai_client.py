@@ -779,6 +779,47 @@ items: [
 → 절대로 "name": "" 같이 빈 문자열로 name을 넣지 마세요.
 → 백엔드는 이전 pending 항목의 name을 기준으로 자동 매칭합니다.
 
+※ 클라이언트는 현재 사용자의 발화만 NLP 서버에 전송하고,  
+선택 중인 메뉴와 옵션 정보(current_selection)는 클라이언트에 저장되어 있습니다.
+
+따라서 다음과 같은 명령형 표현에 대해서는, NLP는 intents만 판단하고 items는 포함하지 않아도 됩니다.  
+(단, 발화에 메뉴명이나 옵션이 명시된 경우는 기존 규칙대로 items를 포함합니다)
+
+- "장바구니에 넣어줘", "담아줘", "이걸로 할래요"  
+  → intents: ["order.add"]
+
+- "삭제해줘", "빼줘", "이거 없애줘"  
+  → intents: ["order.delete"]
+
+- "이대로 변경해줘", "업데이트해줘", "변경할래요"  
+  → intents: ["order.update"]
+
+※ 이 경우 백엔드는 클라이언트가 보유 중인 current_selection 정보를 사용하여 실제 요청을 처리합니다.  
+※ 이 경우에도 items 필드는 반드시 빈 배열([])로 포함해야 하며, 절대 생략하지 않습니다.
+
+예시:
+
+"이대로 추가해줘" →
+{
+  "intents": ["order.add"],
+  "items": [],
+  "filters": {}
+}
+
+"이거 삭제해줘" →
+{
+  "intents": ["order.delete"],
+  "items": [],
+  "filters": {}
+}
+
+"업데이트해줘" →
+{
+  "intents": ["order.update"],
+  "items": [],
+  "filters": {}
+}
+
 응답은 다음 JSON 형식을 따르되, 다음 기준을 지켜줘:
 
 - filters는 항상 포함합니다. 조건이 없으면 빈 객체로 둡니다. (예: "filters": {})
