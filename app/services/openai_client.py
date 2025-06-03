@@ -31,6 +31,22 @@ intents는 항상 배열 형식으로 설정합니다.
 - tag: 메뉴의 맛이나 특징을 나타내는 필터. 예:
     - "popular", "zero", "new", "warm", "cold", "refresh", "sweet", "bitter", "nutty", "creamy", "fruity", "grain"
     - "gender_male", "gender_female", "young", "old"
+    * "popular": 대중적으로 자주 선택되는 메뉴
+    * "zero": 설탕/시럽이 없거나 칼로리가 낮은 메뉴
+    * "new": 최근 출시되었거나 한정 메뉴
+    * "warm": 따뜻한 느낌, 기본이 핫 메뉴
+    * "cold": 시원한 느낌, 아이스 전용 또는 인기 있는 아이스 옵션
+    * "refresh": 청량하고 상쾌한 느낌을 주는 메뉴
+    * "sweet": 단맛이 중심인 메뉴 (초코, 카라멜 등)
+    * "bitter": 쓴맛이 중심인 메뉴 (아메리카노 등)
+    * "nutty": 견과류, 고소한 맛이 나는 메뉴
+    * "creamy": 우유, 크림 느낌이 강한 메뉴
+    * "fruity": 과일 베이스의 메뉴
+    * "grain": 곡물/빵류와 관련된 메뉴
+    * "gender_male": 남성 고객 선호 경향
+    * "gender_female": 여성 고객 선호 경향
+    * "young": 10대부터 30대까지 선호하는 메뉴
+    * "old": 40대 이상이 선호하는 클래식한 메뉴
 - exclude_tags: 추천에서 제외할 맛 특성. 예: {"exclude_tags": ["sweet"]}
 - caffeine: 카페인 조건 필터. "decaf" (디카페인 요청 시 사용)
 - include_ingredients: 반드시 포함해야 하는 재료 리스트. 예: {"include_ingredients": ["딸기"]}
