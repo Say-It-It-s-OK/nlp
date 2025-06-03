@@ -329,6 +329,30 @@ items: [
 
 ※ 사용자가 '빵', '케이크', '베이커리', '쿠키' 등을 요청하면 categories는 ["디저트"]로 설정합니다.
 
+사용자의 기분 또는 날씨 관련 표현이 들어오면 해당 상황에 맞는 filters.tag를 추론해서 포함해줘.  
+filters.tag는 항상 배열 형식으로 포함하고, 추론된 태그가 없더라도 빈 배열로라도 포함해야 해.
+
+날씨 관련 예시:
+- "비 와서" → ["warm", "nutty", "sweet"]
+- "덥다" → ["cold", "refresh", "zero"]
+- "춥다" → ["warm", "hot", "sweet"]
+- "화창하다" → ["refresh", "fruity", "cold"]
+- "흐리다" → ["bitter", "creamy", "hot"]
+
+기분 관련 예시:
+- "피곤해요" → ["creamy", "nutty", "warm"]
+- "기분 좋아요" → ["sweet", "fruity", "popular"]
+- "우울해요" → ["sweet", "warm", "bitter"]
+- "상쾌해요" → ["refresh", "zero", "cold"]
+- "집중하고 싶어요" → ["bitter", "nutty", "hot"]
+
+기분이나 날씨 표현만 있어도 recommend intent로 처리해줘.  
+tag 매핑이 불가능하면 filters는 다음과 같이 비워서라도 포함해:
+
+"filters": {
+  "tag": []
+}
+
 ※ 사용자가 정확한 숫자를 말한 경우 (예: "1개 추천", "커피 하나") → filters.count는 해당 숫자로 설정
 
 ※ 사용자가 추천 개수를 요청하는 경우 (예: "3개 추천해줘", "여러 개 추천해줘")에는 filters.count를 설정합니다.
