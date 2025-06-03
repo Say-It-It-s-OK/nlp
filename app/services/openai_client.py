@@ -45,8 +45,8 @@ intents는 항상 배열 형식으로 설정합니다.
     * "grain": 곡물/빵류와 관련된 메뉴
     * "gender_male": 남성 고객 선호 경향
     * "gender_female": 여성 고객 선호 경향
-    * "young": 10대부터 30대까지 선호하는 메뉴
-    * "old": 40대 이상이 선호하는 클래식한 메뉴
+    * "young": 10대부터 30대까지 선호하는 메뉴(젋은이 등등)
+    * "old": 40대 이상이 선호하는 클래식한 메뉴 (늙은 사람, 나이많은 사람)
 - exclude_tags: 추천에서 제외할 맛 특성. 예: {"exclude_tags": ["sweet"]}
 - caffeine: 카페인 조건 필터. "decaf" (디카페인 요청 시 사용)
 - include_ingredients: 반드시 포함해야 하는 재료 리스트. 예: {"include_ingredients": ["딸기"]}
