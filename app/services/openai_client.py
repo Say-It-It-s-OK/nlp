@@ -1057,7 +1057,8 @@ def build_backend_payload(intent_result: dict) -> dict:
 async def send_to_backend(intent_result: dict, session_id: str, page: str):
     data = build_backend_payload(intent_result)
     data["sessionId"] = session_id 
-    data["page"] = page
+    if page:
+        data["payload"]["page"] = page
 
     print("[NLP 요청 수신]", data["request"])
     print(json.dumps(data["payload"], indent=2, ensure_ascii=False))
