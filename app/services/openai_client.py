@@ -1014,9 +1014,10 @@ def build_backend_payload(intent_result: dict) -> dict:
         }
     }
 
-async def send_to_backend(intent_result: dict, session_id: str):
+async def send_to_backend(intent_result: dict, session_id: str, page: str):
     data = build_backend_payload(intent_result)
     data["sessionId"] = session_id 
+    data["page"] = page
 
     print("[NLP 요청 수신]", data["request"])
     print(json.dumps(data["payload"], indent=2, ensure_ascii=False))
@@ -1039,8 +1040,8 @@ async def call_openai(messages: List[Dict[str, str]]) -> Dict:
     except Exception as e:
         return {"error": str(e)}
 
-async def handle_text(text: str, session_id: str):
+async def handle_text(text: str, session_id: str, page: str):
     messages = make_messages(text)
     intent_result = await call_openai(messages)
-    backend_response = await send_to_backend(intent_result, session_id)
+    backend_response = await send_to_backend(intent_result, session_id, page)
     return backend_response
